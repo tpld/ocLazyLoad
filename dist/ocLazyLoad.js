@@ -1,6 +1,6 @@
 /**
  * oclazyload - Load modules on demand (lazy load) with angularJS
- * @version v1.0.9
+ * @version v1.0.10
  * @link https://github.com/ocombe/ocLazyLoad
  * @license MIT
  * @author Olivier Combe <olivier.combe@gmail.com>
@@ -743,6 +743,16 @@
 
     var bootstrapFct = angular.bootstrap;
     angular.bootstrap = function (element, modules, config) {
+        // Clean state from previous bootstrap
+        regModules = ['ng', 'oc.lazyLoad'];
+        regInvokes = {};
+        regConfigs = [];
+        modulesToLoad = [];
+        realModules = [];
+        recordDeclarations = [];
+        broadcast = angular.noop;
+        runBlocks = {};
+        justLoaded = [];
         // we use slice to make a clean copy
         angular.forEach(modules.slice(), function (module) {
             _addToLoadList(module, true, true);
@@ -885,6 +895,7 @@
 
                 /*
                  The event load or readystatechange doesn't fire in:
+                 - PhantomJS 1.9 (headless webkit browser)
                  - iOS < 6       (default mobile browser)
                  - Android < 4.4 (default mobile browser)
                  - Safari < 6    (desktop browser)
@@ -893,16 +904,20 @@
                     if (!uaCssChecked) {
                         var ua = $window.navigator.userAgent.toLowerCase();
 
-                        // iOS < 6
-                        if (/iP(hone|od|ad)/.test($window.navigator.platform)) {
+                        if (ua.indexOf('phantomjs/1.9') > -1) {
+                            // PhantomJS ~1.9
+                            useCssLoadPatch = true;
+                        } else if (/iP(hone|od|ad)/.test($window.navigator.platform)) {
+                            // iOS < 6
                             var v = $window.navigator.appVersion.match(/OS (\d+)_(\d+)_?(\d+)?/);
                             var iOSVersion = parseFloat([parseInt(v[1], 10), parseInt(v[2], 10), parseInt(v[3] || 0, 10)].join('.'));
                             useCssLoadPatch = iOSVersion < 6;
-                        } else if (ua.indexOf("android") > -1) {
+                        } else if (ua.indexOf('android') > -1) {
                             // Android < 4.4
-                            var androidVersion = parseFloat(ua.slice(ua.indexOf("android") + 8));
+                            var androidVersion = parseFloat(ua.slice(ua.indexOf('android') + 8));
                             useCssLoadPatch = androidVersion < 4.4;
                         } else if (ua.indexOf('safari') > -1) {
+                            // Safari < 6
                             var versionMatch = ua.match(/version\/([\.\d]+)/i);
                             useCssLoadPatch = versionMatch && versionMatch[1] && parseFloat(versionMatch[1]) < 6;
                         }
@@ -1245,7 +1260,8 @@
                 angular.forEach(paths, function (url) {
                     var deferred = $q.defer();
                     promises.push(deferred.promise);
-                    $http.get(url, params).success(function (data) {
+                    $http.get(url, params).then(function (response) {
+                        var data = response.data;
                         if (angular.isString(data) && data.length > 0) {
                             angular.forEach(angular.element(data), function (node) {
                                 if (node.nodeName === 'SCRIPT' && node.type === 'text/ng-template') {
@@ -1257,7 +1273,8 @@
                             filesCache.put(url, true);
                         }
                         deferred.resolve();
-                    }).error(function (err) {
+                    })['catch'](function (response) {
+                        var err = response.data;
                         deferred.reject(new Error('Unable to load template file "' + url + '": ' + err));
                     });
                 });

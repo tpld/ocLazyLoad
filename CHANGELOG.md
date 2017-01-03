@@ -1,3 +1,13 @@
+<a name="1.0.10"></a>
+# 1.0.10 (2017-01-04)
+
+
+## Bug Fixes
+
+- resolve the loader with created elements
+ ([3351e44d](https://github.com/ocombe/ocLazyLoad/commit/3351e44d2d76b7599eadfe59dec5a5674b1aff69))
+
+
 <a name="1.0.9"></a>
 # 1.0.9 (2015-11-24)
 
