@@ -18,7 +18,8 @@
                 angular.forEach(paths, url => {
                     var deferred = $q.defer();
                     promises.push(deferred.promise);
-                    $http.get(url, params).success(data => {
+                    $http.get(url, params).then(response => {
+                        var data = response.data;
                         if(angular.isString(data) && data.length > 0) {
                             angular.forEach(angular.element(data), node => {
                                 if(node.nodeName === 'SCRIPT' && node.type === 'text/ng-template') {
@@ -30,7 +31,8 @@
                             filesCache.put(url, true);
                         }
                         deferred.resolve();
-                    }).error(function(err) {
+                    }).catch(function(response) {
+                        var err = response.data;
                         deferred.reject(new Error(`Unable to load template file "${ url }": ${ err }`));
                     });
                 });
